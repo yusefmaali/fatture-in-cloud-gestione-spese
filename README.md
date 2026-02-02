@@ -177,8 +177,8 @@ fic-expenses pay --supplier "Amazon" --yes
 | `--supplier`, `-s` | Filter by supplier name (partial match) |
 | `--from` | Filter from date (YYYY-MM-DD) |
 | `--to` | Filter to date (YYYY-MM-DD) |
-| `--all`, `-a` | Fetch all expenses (default: first 50) |
-| `--limit`, `-l` | Maximum number of expenses to show |
+| `--all`, `-a` | Fetch all expenses (ignores --limit, uses max per_page=100) |
+| `--limit`, `-l` | Maximum number of expenses to show (ignored with --all) |
 
 ### Create Options
 | Option | Description |

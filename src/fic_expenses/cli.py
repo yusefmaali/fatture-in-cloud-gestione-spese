@@ -99,7 +99,10 @@ def list(
         )
         query = filter_obj.to_query()
 
+        # --all ignores --limit (fetch everything, API uses max per_page internally)
         if all_results:
+            if limit:
+                console.print("[dim]Note: --limit ignored when using --all[/dim]")
             console.print("[dim]Fetching all expenses...[/dim]")
 
         # Determine per_page: use limit if no client-side filtering needed
@@ -119,8 +122,8 @@ def list(
         elif unpaid:
             expenses = [e for e in expenses if e.next_due_date is not None]
 
-        # Apply limit (for cases where we couldn't apply it server-side)
-        if limit is not None and limit > 0 and (all_results or needs_client_filter):
+        # Apply limit only when using client-side filters (not with --all)
+        if limit is not None and limit > 0 and needs_client_filter and not all_results:
             expenses = expenses[:limit]
 
         display_expenses_table(expenses)

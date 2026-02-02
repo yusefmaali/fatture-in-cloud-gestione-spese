@@ -55,4 +55,10 @@ utils.py        → Date calculations (installments, end-of-month)
   - `next_due_date is None` → fully paid (or no payments configured)
 - Show API returns full `payments_list` with detailed payment records
 
+**Pagination:**
+- `MAX_PER_PAGE = 100` is defined in `FICClient` (SDK enforces this limit via Pydantic validation)
+- `--all` uses `MAX_PER_PAGE` internally to minimize API calls
+- `--all` ignores `--limit` by design (fetches everything)
+- Rate limits: 300 requests/5 min, 1000/hour per company
+
 See: https://github.com/fattureincloud/fattureincloud-python-sdk/blob/master/docs/ReceivedDocument.md
