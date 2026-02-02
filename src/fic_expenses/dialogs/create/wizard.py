@@ -1,8 +1,6 @@
 """Create expense wizard dialog."""
 
 from datetime import date
-from decimal import Decimal
-from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -13,7 +11,6 @@ from textual.reactive import reactive
 from rich.text import Text
 
 from ...api import FICClient, create_payment_installments
-from ...models import ExpenseInput
 from ...utils import generate_installment_dates, split_amount
 
 

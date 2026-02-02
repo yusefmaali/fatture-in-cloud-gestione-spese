@@ -3,7 +3,6 @@
 import os
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
 
 from dotenv import load_dotenv
 import fattureincloud_python_sdk
@@ -17,7 +16,6 @@ from fattureincloud_python_sdk.models import (
     ReceivedDocumentPaymentsListItem,
     PaymentAccount,
 )
-from fattureincloud_python_sdk.exceptions import ApiException
 
 
 @dataclass

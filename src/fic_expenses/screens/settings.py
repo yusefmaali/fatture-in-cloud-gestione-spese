@@ -1,6 +1,5 @@
 """Settings screen for configuring FIC credentials."""
 
-import os
 from pathlib import Path
 
 from dotenv import dotenv_values, set_key
@@ -22,13 +21,6 @@ from textual.widgets.option_list import Option
 
 import fattureincloud_python_sdk
 from fattureincloud_python_sdk.api import InfoApi
-
-
-def mask_token(token: str, visible_chars: int = 4) -> str:
-    """Mask a token showing only first/last N characters."""
-    if not token or len(token) <= visible_chars * 2:
-        return token
-    return f"{token[:visible_chars]}{'*' * 20}{token[-visible_chars:]}"
 
 
 def get_env_path() -> Path:

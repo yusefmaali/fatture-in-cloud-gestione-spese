@@ -1,7 +1,5 @@
 """Main FIC Expenses TUI Application."""
 
-from datetime import datetime
-
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding

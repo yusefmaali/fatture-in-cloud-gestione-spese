@@ -1,7 +1,7 @@
 """Right-side statistics panel widget."""
 
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date
 from textual.app import ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Static

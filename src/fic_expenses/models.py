@@ -60,31 +60,3 @@ class ExpenseInput(BaseModel):
                 year += 1
             return end_of_month(year, month)
         return v
-
-
-class PaymentFilter(BaseModel):
-    """Filter for payment status."""
-
-    paid: Optional[bool] = Field(None, description="Filter by paid status")
-    supplier: Optional[str] = Field(None, description="Filter by supplier name")
-    from_date: Optional[date] = Field(None, description="Filter from date")
-    to_date: Optional[date] = Field(None, description="Filter to date")
-
-    def to_query(self) -> str | None:
-        """Convert filters to FIC API query string."""
-        conditions = []
-
-        if self.supplier:
-            # Partial match on entity name
-            conditions.append(f"entity.name LIKE '%{self.supplier}%'")
-
-        if self.from_date:
-            conditions.append(f"date >= '{self.from_date}'")
-
-        if self.to_date:
-            conditions.append(f"date <= '{self.to_date}'")
-
-        if not conditions:
-            return None
-
-        return " AND ".join(conditions)

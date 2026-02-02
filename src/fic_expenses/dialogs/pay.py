@@ -2,8 +2,6 @@
 
 import os
 from datetime import date
-from typing import Callable
-
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import ModalScreen
@@ -222,7 +220,7 @@ class PayDialog(ModalScreen[bool]):
         # Validate account ID
         if not self._default_account_id:
             self._show_error(
-                "No payment account configured. Run 'fic-expenses configs' first."
+                "No payment account configured. Press 's' to open Settings."
             )
             return
 

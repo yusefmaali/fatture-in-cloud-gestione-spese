@@ -1,7 +1,6 @@
 """Expenses table widget with multi-selection support."""
 
 from datetime import date
-from typing import Any
 
 from textual.binding import Binding
 from textual.events import Key

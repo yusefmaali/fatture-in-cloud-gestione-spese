@@ -7,9 +7,8 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
-from textual.widgets import Static, Button, Rule
+from textual.widgets import Static, Button
 from rich.text import Text
-from rich.panel import Panel
 
 from fattureincloud_python_sdk.models import ReceivedDocument
 
