@@ -157,20 +157,18 @@ class PayDialog(ModalScreen[bool]):
 
             # Payment date input
             with Container(classes="form-group"):
-                # For batch: use each expense's date by default (leave empty)
-                # For single: default to that expense's date
+                # For batch: use each installment's due date by default (leave empty)
+                # For single: default to installment due date (if specific) or expense date
                 if len(self.expenses) == 1:
                     yield Label("Payment Date")
-                    default_date = ""
-                    if self.expenses[0].var_date:
-                        default_date = self.expenses[0].var_date.strftime("%Y-%m-%d")
+                    default_date = self._get_default_payment_date(self.expenses[0])
                     yield Input(
                         value=default_date,
                         placeholder="YYYY-MM-DD",
                         id="payment-date",
                     )
                 else:
-                    yield Label("Payment Date (leave empty to use each expense's date)")
+                    yield Label("Payment Date (leave empty to use each installment's due date)")
                     yield Input(
                         value="",
                         placeholder="YYYY-MM-DD or empty",
@@ -187,6 +185,23 @@ class PayDialog(ModalScreen[bool]):
             with Horizontal(id="dialog-buttons"):
                 yield Button("Confirm", variant="primary", id="confirm-btn")
                 yield Button("Cancel", variant="default", id="cancel-btn")
+
+    def _get_default_payment_date(self, expense: ReceivedDocument) -> str:
+        """Get the default payment date for display in the input field.
+
+        For specific installment: use that installment's due_date
+        For all installments: use expense date (each will use its own due_date on submit)
+        """
+        if self.installment_index and expense.payments_list:
+            idx = self.installment_index - 1
+            if idx < len(expense.payments_list):
+                payment = expense.payments_list[idx]
+                if payment.due_date:
+                    return payment.due_date.strftime("%Y-%m-%d")
+        # Fallback to expense date
+        if expense.var_date:
+            return expense.var_date.strftime("%Y-%m-%d")
+        return ""
 
     def _get_payable_amount(self, expense: ReceivedDocument) -> float:
         """Get the amount to be paid for an expense."""
@@ -249,14 +264,29 @@ class PayDialog(ModalScreen[bool]):
         """Process payments for all expenses (runs in thread).
 
         Args:
-            payment_date: Date to use for all payments, or None to use each expense's date.
+            payment_date: Date to use for all payments, or None to use each installment's due date.
         """
         try:
             client = FICClient()
 
             for expense in self.expenses:
-                # Use provided date, or fall back to expense's own date
-                expense_payment_date = payment_date or expense.var_date
+                # Determine the payment date:
+                # 1. User-provided date takes precedence
+                # 2. For specific installment: use that installment's due_date
+                # 3. For "pay all": pass None so API uses each installment's due_date
+                if payment_date:
+                    expense_payment_date = payment_date
+                elif self.installment_index and expense.payments_list:
+                    # Specific installment - use its due_date
+                    idx = self.installment_index - 1
+                    if idx < len(expense.payments_list):
+                        expense_payment_date = expense.payments_list[idx].due_date
+                    else:
+                        expense_payment_date = None  # Let API handle fallback
+                else:
+                    # Pay all - let API use each installment's due_date
+                    expense_payment_date = None
+
                 client.mark_expense_paid(
                     document_id=expense.id,
                     payment_account_id=self._default_account_id,

@@ -299,7 +299,8 @@ class FICClient:
         Args:
             document_id: ID of the expense
             payment_account_id: ID of the payment account (bank, cash, card, etc.)
-            paid_date: Date of payment (defaults to expense date)
+            paid_date: Date of payment. If None, each installment uses its own due_date
+                      (falls back to expense date if due_date is also missing)
             installment_index: If provided, only mark this installment as paid (1-indexed)
 
         Returns:
@@ -310,9 +311,6 @@ class FICClient:
         # Get current expense
         expense = self.get_expense(document_id)
 
-        # Default to expense date if no paid_date provided
-        paid_date = paid_date or expense.var_date
-
         if not expense.payments_list:
             raise ValueError(f"Expense {document_id} has no payment schedule")
 
@@ -322,13 +320,15 @@ class FICClient:
                 # Only update specific installment (1-indexed)
                 if i + 1 == installment_index:
                     payment.status = "paid"
-                    payment.paid_date = paid_date
+                    # Use provided date, or installment's due_date, or expense date
+                    payment.paid_date = paid_date or payment.due_date or expense.var_date
                     payment.payment_account = payment_account
             else:
                 # Update all unpaid installments
                 if payment.status != "paid":
                     payment.status = "paid"
-                    payment.paid_date = paid_date
+                    # Each installment uses its own due_date if no explicit date provided
+                    payment.paid_date = paid_date or payment.due_date or expense.var_date
                     payment.payment_account = payment_account
 
         return self.update_expense(document_id, expense)
