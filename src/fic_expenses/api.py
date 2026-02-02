@@ -230,17 +230,19 @@ class FICClient:
         Args:
             document_id: ID of the expense
             payment_account_id: ID of the payment account (bank, cash, card, etc.)
-            paid_date: Date of payment (defaults to today)
+            paid_date: Date of payment (defaults to expense date)
             installment_index: If provided, only mark this installment as paid (1-indexed)
 
         Returns:
             Updated expense document
         """
-        paid_date = paid_date or date.today()
         payment_account = PaymentAccount(id=payment_account_id)
 
         # Get current expense
         expense = self.get_expense(document_id)
+
+        # Default to expense date if no paid_date provided
+        paid_date = paid_date or expense.var_date
 
         if not expense.payments_list:
             raise ValueError(f"Expense {document_id} has no payment schedule")

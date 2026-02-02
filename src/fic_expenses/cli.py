@@ -206,7 +206,7 @@ def pay(
     ] = None,
     payment_date: Annotated[
         Optional[str],
-        typer.Option("--date", "-d", help="Payment date (default: today, format: YYYY-MM-DD)"),
+        typer.Option("--date", "-d", help="Payment date (default: expense date, format: YYYY-MM-DD)"),
     ] = None,
     supplier: Annotated[
         Optional[str],
@@ -240,7 +240,7 @@ def pay(
             raise typer.Exit(1)
 
         client = FICClient()
-        actual_payment_date = parse_date(payment_date) or date.today()
+        actual_payment_date = parse_date(payment_date)  # None = use expense date
         actual_from_date = parse_date(from_date)
         actual_to_date = parse_date(to_date)
 

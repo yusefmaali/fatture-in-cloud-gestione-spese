@@ -211,7 +211,7 @@ fic-expenses pay --supplier "Amazon" --yes
 | Option | Description |
 |--------|-------------|
 | `--installment`, `-i` | Mark only this installment as paid (1-indexed) |
-| `--date`, `-d` | Payment date (default: today) |
+| `--date`, `-d` | Payment date (default: expense date) |
 | `--supplier`, `-s` | Batch: mark all from supplier |
 | `--from` | Batch: from date |
 | `--to` | Batch: to date |
