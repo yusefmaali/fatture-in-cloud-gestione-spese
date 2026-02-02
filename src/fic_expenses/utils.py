@@ -23,19 +23,19 @@ def generate_installment_dates(
     """
     Generate due dates for installments.
 
-    Each installment is due at the end of consecutive months,
-    starting from the month after start_date.
+    First installment is at end of start_date's month,
+    subsequent installments at end of consecutive months.
     """
     dates = []
     year = start_date.year
     month = start_date.month
 
     for _ in range(num_installments):
+        dates.append(end_of_month(year, month))
         month += 1
         if month > 12:
             month = 1
             year += 1
-        dates.append(end_of_month(year, month))
 
     return dates
 
