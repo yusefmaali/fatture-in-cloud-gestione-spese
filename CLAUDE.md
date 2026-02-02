@@ -23,6 +23,7 @@ This is a Typer-based CLI tool for managing expenses in Fatture in Cloud (Italia
 ```
 cli.py          → Command definitions (Typer app)
     ↓
+config.py       → Textual TUI for configuration wizard
 prompts.py      → Interactive wizard for expense creation
 models.py       → Pydantic models for input validation
     ↓
@@ -41,6 +42,8 @@ utils.py        → Date calculations (installments, end-of-month)
 - **Payment installments**: Expenses can have multiple payments (pagamento rateale). The `payments_list` field contains `ReceivedDocumentPaymentsListItem` objects with `status` ("paid"/"not_paid"), `amount`, and `due_date`.
 
 - **Recurrence**: The `create` command can generate multiple expenses at once by shifting dates according to `RecurrencePeriod` (monthly/biannual/yearly).
+
+- **Configuration**: The `configs` command launches a Textual TUI (`config.py`) with tabbed navigation for setting credentials and selecting a default payment account. Configuration is stored in `.env` using `dotenv.set_key()`.
 
 ## FIC API Notes
 
@@ -65,7 +68,7 @@ utils.py        → Date calculations (installments, end-of-month)
 - IMPORTANT: The API requires a `payment_account` when updating payment status
 - Without a `payment_account`, the API silently ignores the payment update (no error)
 - Use `InfoApi.list_payment_accounts()` to get available accounts (bank, cash, cards)
-- The `pay` command prompts for an account if `--account` is not specified
+- The `pay` command uses `FIC_DEFAULT_ACCOUNT_ID` from `.env` (set via `fic-expenses configs`)
 
 See:
 - https://github.com/fattureincloud/fattureincloud-python-sdk/blob/master/docs/ReceivedDocument.md

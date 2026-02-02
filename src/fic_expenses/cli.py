@@ -162,52 +162,32 @@ def show(
 
 
 # ============================================================================
-# ACCOUNTS COMMAND
+# CONFIGS COMMAND
 # ============================================================================
 
 @app.command()
-def accounts():
-    """List available payment accounts."""
-    try:
-        client = FICClient()
-        payment_accounts = client.list_payment_accounts()
+def configs():
+    """Configure FIC credentials and default settings."""
+    from .config import ConfigWizard
 
-        if not payment_accounts:
-            console.print("[yellow]No payment accounts found.[/yellow]")
-            return
-
-        console.print("\n[bold]Payment Accounts[/bold]")
-        console.print("─" * 40)
-        for acc in payment_accounts:
-            console.print(f"  [cyan]{acc.id}[/cyan]  {acc.name}")
-        console.print()
-
-    except Exception as e:
-        console.print(f"[red]API Error:[/red] {e}")
+    wizard = ConfigWizard()
+    if not wizard.run():
         raise typer.Exit(1)
 
 
-def prompt_payment_account(client: FICClient) -> int:
-    """Prompt user to select a payment account."""
-    from rich.prompt import Prompt
+def get_default_payment_account() -> int | None:
+    """Get the default payment account ID from environment."""
+    import os
+    from dotenv import load_dotenv
 
-    accounts = client.list_payment_accounts()
-    if not accounts:
-        raise ValueError("No payment accounts configured. Create one in Fatture in Cloud first.")
-
-    console.print("\n[bold]Select payment account:[/bold]")
-    for i, acc in enumerate(accounts, 1):
-        console.print(f"  [cyan]{i}[/cyan]. {acc.name}")
-
-    while True:
-        choice = Prompt.ask("Enter number", default="1")
+    load_dotenv()
+    account_id = os.getenv("FIC_DEFAULT_ACCOUNT_ID")
+    if account_id:
         try:
-            idx = int(choice) - 1
-            if 0 <= idx < len(accounts):
-                return accounts[idx].id
-            console.print(f"[red]Invalid choice. Enter 1-{len(accounts)}[/red]")
+            return int(account_id)
         except ValueError:
-            console.print("[red]Enter a number[/red]")
+            return None
+    return None
 
 
 # ============================================================================
@@ -227,10 +207,6 @@ def pay(
     payment_date: Annotated[
         Optional[str],
         typer.Option("--date", "-d", help="Payment date (default: today, format: YYYY-MM-DD)"),
-    ] = None,
-    account: Annotated[
-        Optional[int],
-        typer.Option("--account", "-a", help="Payment account ID (use 'accounts' command to list)"),
     ] = None,
     supplier: Annotated[
         Optional[str],
@@ -253,16 +229,20 @@ def pay(
     Mark expense(s) as paid.
 
     Can mark a single expense, a specific installment, or batch by supplier/date range.
-    Requires a payment account (prompts if not specified via --account).
+    Uses the default payment account (run 'fic-expenses configs' to set up).
     """
     try:
+        # Get payment account from config
+        payment_account_id = get_default_payment_account()
+        if not payment_account_id:
+            console.print("[red]Error:[/red] No default payment account configured.")
+            console.print("Run [cyan]fic-expenses configs[/cyan] to set up your credentials and payment account.")
+            raise typer.Exit(1)
+
         client = FICClient()
         actual_payment_date = parse_date(payment_date) or date.today()
         actual_from_date = parse_date(from_date)
         actual_to_date = parse_date(to_date)
-
-        # Get payment account (prompt if not specified)
-        payment_account_id = account or prompt_payment_account(client)
 
         # Single expense
         if expense_id is not None:

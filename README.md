@@ -27,17 +27,26 @@ pip install -e .
 
 ## Configuration
 
-Copy `.env.example` to `.env` and add your Fatture in Cloud credentials:
+Run the interactive configuration wizard:
+
+```bash
+fic-expenses configs
+```
+
+This will guide you through:
+1. Setting your API credentials (get them from https://fattureincloud.it/connessioni/)
+2. Selecting a default payment account
+
+Alternatively, copy `.env.example` to `.env` and add credentials manually:
 
 ```bash
 cp .env.example .env
 ```
 
-Get your credentials from: https://fattureincloud.it/connessioni/ → "Gestisci le tue App"
-
 ```env
 FIC_ACCESS_TOKEN=your_access_token_here
 FIC_COMPANY_ID=your_company_id_here
+FIC_DEFAULT_ACCOUNT_ID=123456  # Required for 'pay' command
 ```
 
 ## Usage
@@ -136,30 +145,26 @@ fic-expenses create \
 
 ### Mark as Paid
 
-```bash
-# List available payment accounts
-fic-expenses accounts
+The `pay` command uses the default payment account set by `fic-expenses configs`.
 
-# Mark expense as paid (prompts for account if not specified)
+```bash
+# Mark expense as paid
 fic-expenses pay 12345
 
-# Mark expense as paid using specific account
-fic-expenses pay 12345 --account 75159
-
 # Mark specific installment (1-indexed)
-fic-expenses pay 12345 --installment 2 --account 75159
+fic-expenses pay 12345 --installment 2
 
 # Custom payment date
-fic-expenses pay 12345 --date 2024-02-15 --account 75159
+fic-expenses pay 12345 --date 2024-02-15
 
 # Batch: mark all from supplier as paid
-fic-expenses pay --supplier "Amazon" --account 75159
+fic-expenses pay --supplier "Amazon"
 
 # Batch: mark expenses in date range as paid
-fic-expenses pay --from 2024-01-01 --to 2024-01-31 --account 75159
+fic-expenses pay --from 2024-01-01 --to 2024-01-31
 
 # Skip confirmation prompt for batch
-fic-expenses pay --supplier "Amazon" --account 75159 --yes
+fic-expenses pay --supplier "Amazon" --yes
 ```
 
 ## Command Reference
@@ -170,7 +175,7 @@ fic-expenses pay --supplier "Amazon" --account 75159 --yes
 | `fic-expenses show <id>` | Show expense details and installments |
 | `fic-expenses pay <id>` | Mark expense or installment as paid |
 | `fic-expenses create` | Create new expense (wizard or CLI args) |
-| `fic-expenses accounts` | List available payment accounts |
+| `fic-expenses configs` | Configure credentials and default settings |
 | `fic-expenses --help` | Show help |
 | `fic-expenses --version` | Show version |
 
@@ -205,13 +210,14 @@ fic-expenses pay --supplier "Amazon" --account 75159 --yes
 ### Pay Options
 | Option | Description |
 |--------|-------------|
-| `--account`, `-a` | Payment account ID (prompts if not specified) |
 | `--installment`, `-i` | Mark only this installment as paid (1-indexed) |
 | `--date`, `-d` | Payment date (default: today) |
 | `--supplier`, `-s` | Batch: mark all from supplier |
 | `--from` | Batch: from date |
 | `--to` | Batch: to date |
 | `--yes`, `-y` | Skip confirmation for batch operations |
+
+Note: The `pay` command uses the default payment account set via `fic-expenses configs`.
 
 ## API Documentation
 
