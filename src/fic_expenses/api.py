@@ -45,7 +45,8 @@ class FICClient:
         api_client = fattureincloud_python_sdk.ApiClient(self.config)
         return ReceivedDocumentsApi(api_client)
 
-    # Maximum per_page value (SDK enforces <= 100)
+    # API per_page constraints (enforced by SDK/API)
+    MIN_PER_PAGE = 5
     MAX_PER_PAGE = 100
 
     def list_expenses(
@@ -62,7 +63,7 @@ class FICClient:
         Args:
             q: Filter query (e.g., "entity.name = 'Amazon'")
             sort: Sort field (e.g., "-date" for descending)
-            per_page: Items per page (max 100)
+            per_page: Items per page (5-100)
             fetch_all: If True, fetch all pages using max per_page to minimize API calls
 
         Returns:
@@ -74,8 +75,8 @@ class FICClient:
         if fetch_all:
             per_page = self.MAX_PER_PAGE
 
-        # Clamp per_page to max allowed value
-        per_page = min(per_page, self.MAX_PER_PAGE)
+        # Clamp per_page to API constraints
+        per_page = max(self.MIN_PER_PAGE, min(per_page, self.MAX_PER_PAGE))
 
         if not fetch_all:
             response = api.list_received_documents(

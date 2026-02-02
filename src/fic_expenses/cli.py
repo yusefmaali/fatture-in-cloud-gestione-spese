@@ -108,7 +108,7 @@ def list(
         # Determine per_page: use limit if no client-side filtering needed
         needs_client_filter = paid or unpaid
         if limit and not all_results and not needs_client_filter:
-            # Can apply limit server-side
+            # Can apply limit server-side (API will clamp to min 5)
             per_page = limit
         else:
             per_page = 50  # default
@@ -122,9 +122,10 @@ def list(
         elif unpaid:
             expenses = [e for e in expenses if e.next_due_date is not None]
 
-        # Apply limit only when using client-side filters (not with --all)
-        if limit is not None and limit > 0 and needs_client_filter and not all_results:
-            expenses = expenses[:limit]
+        # Apply limit when needed (client-side filters, or limit < API min of 5)
+        if limit is not None and limit > 0 and not all_results:
+            if needs_client_filter or limit < 5:
+                expenses = expenses[:limit]
 
         display_expenses_table(expenses)
 

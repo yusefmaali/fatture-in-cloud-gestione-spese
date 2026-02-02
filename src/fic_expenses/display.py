@@ -149,6 +149,8 @@ def display_expenses_table(expenses: list[Any]) -> None:
     table.add_column("Date", justify="center")
     table.add_column("Supplier", style="bold")
     table.add_column("Description")
+    table.add_column("Net", justify="right")
+    table.add_column("VAT", justify="right")
     table.add_column("Gross", justify="right")
     table.add_column("Status", justify="center")
     table.add_column("Next Due", justify="center")
@@ -169,6 +171,8 @@ def display_expenses_table(expenses: list[Any]) -> None:
             str(exp.var_date) if exp.var_date else "-",
             exp.entity.name if exp.entity else "-",
             (exp.description[:30] + "...") if exp.description and len(exp.description) > 30 else (exp.description or "-"),
+            format_currency(exp.amount_net),
+            format_currency(exp.amount_vat),
             format_currency(exp.amount_gross),
             status_text,
             str(next_due) if next_due else "-",
