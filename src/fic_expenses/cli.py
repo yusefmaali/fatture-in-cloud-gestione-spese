@@ -162,6 +162,55 @@ def show(
 
 
 # ============================================================================
+# ACCOUNTS COMMAND
+# ============================================================================
+
+@app.command()
+def accounts():
+    """List available payment accounts."""
+    try:
+        client = FICClient()
+        payment_accounts = client.list_payment_accounts()
+
+        if not payment_accounts:
+            console.print("[yellow]No payment accounts found.[/yellow]")
+            return
+
+        console.print("\n[bold]Payment Accounts[/bold]")
+        console.print("─" * 40)
+        for acc in payment_accounts:
+            console.print(f"  [cyan]{acc.id}[/cyan]  {acc.name}")
+        console.print()
+
+    except Exception as e:
+        console.print(f"[red]API Error:[/red] {e}")
+        raise typer.Exit(1)
+
+
+def prompt_payment_account(client: FICClient) -> int:
+    """Prompt user to select a payment account."""
+    from rich.prompt import Prompt
+
+    accounts = client.list_payment_accounts()
+    if not accounts:
+        raise ValueError("No payment accounts configured. Create one in Fatture in Cloud first.")
+
+    console.print("\n[bold]Select payment account:[/bold]")
+    for i, acc in enumerate(accounts, 1):
+        console.print(f"  [cyan]{i}[/cyan]. {acc.name}")
+
+    while True:
+        choice = Prompt.ask("Enter number", default="1")
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(accounts):
+                return accounts[idx].id
+            console.print(f"[red]Invalid choice. Enter 1-{len(accounts)}[/red]")
+        except ValueError:
+            console.print("[red]Enter a number[/red]")
+
+
+# ============================================================================
 # PAY COMMAND
 # ============================================================================
 
@@ -178,6 +227,10 @@ def pay(
     payment_date: Annotated[
         Optional[str],
         typer.Option("--date", "-d", help="Payment date (default: today, format: YYYY-MM-DD)"),
+    ] = None,
+    account: Annotated[
+        Optional[int],
+        typer.Option("--account", "-a", help="Payment account ID (use 'accounts' command to list)"),
     ] = None,
     supplier: Annotated[
         Optional[str],
@@ -200,12 +253,16 @@ def pay(
     Mark expense(s) as paid.
 
     Can mark a single expense, a specific installment, or batch by supplier/date range.
+    Requires a payment account (prompts if not specified via --account).
     """
     try:
         client = FICClient()
         actual_payment_date = parse_date(payment_date) or date.today()
         actual_from_date = parse_date(from_date)
         actual_to_date = parse_date(to_date)
+
+        # Get payment account (prompt if not specified)
+        payment_account_id = account or prompt_payment_account(client)
 
         # Single expense
         if expense_id is not None:
@@ -216,6 +273,7 @@ def pay(
 
             expense = client.mark_expense_paid(
                 document_id=expense_id,
+                payment_account_id=payment_account_id,
                 paid_date=actual_payment_date,
                 installment_index=installment,
             )
@@ -257,6 +315,7 @@ def pay(
         for exp in unpaid_expenses:
             client.mark_expense_paid(
                 document_id=exp.id,
+                payment_account_id=payment_account_id,
                 paid_date=actual_payment_date,
             )
             console.print(f"[green]✓[/green] Marked expense #{exp.id} as paid")

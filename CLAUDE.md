@@ -61,4 +61,12 @@ utils.py        → Date calculations (installments, end-of-month)
 - `--all` ignores `--limit` by design (fetches everything)
 - Rate limits: 300 requests/5 min, 1000/hour per company
 
-See: https://github.com/fattureincloud/fattureincloud-python-sdk/blob/master/docs/ReceivedDocument.md
+**Marking payments as paid:**
+- IMPORTANT: The API requires a `payment_account` when updating payment status
+- Without a `payment_account`, the API silently ignores the payment update (no error)
+- Use `InfoApi.list_payment_accounts()` to get available accounts (bank, cash, cards)
+- The `pay` command prompts for an account if `--account` is not specified
+
+See:
+- https://github.com/fattureincloud/fattureincloud-python-sdk/blob/master/docs/ReceivedDocument.md
+- https://developers.fattureincloud.it/docs/guides

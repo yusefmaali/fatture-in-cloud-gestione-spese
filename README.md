@@ -137,23 +137,29 @@ fic-expenses create \
 ### Mark as Paid
 
 ```bash
-# Mark entire expense as paid
+# List available payment accounts
+fic-expenses accounts
+
+# Mark expense as paid (prompts for account if not specified)
 fic-expenses pay 12345
 
+# Mark expense as paid using specific account
+fic-expenses pay 12345 --account 75159
+
 # Mark specific installment (1-indexed)
-fic-expenses pay 12345 --installment 2
+fic-expenses pay 12345 --installment 2 --account 75159
 
 # Custom payment date
-fic-expenses pay 12345 --date 2024-02-15
+fic-expenses pay 12345 --date 2024-02-15 --account 75159
 
 # Batch: mark all from supplier as paid
-fic-expenses pay --supplier "Amazon"
+fic-expenses pay --supplier "Amazon" --account 75159
 
 # Batch: mark expenses in date range as paid
-fic-expenses pay --from 2024-01-01 --to 2024-01-31
+fic-expenses pay --from 2024-01-01 --to 2024-01-31 --account 75159
 
-# Skip confirmation prompt
-fic-expenses pay --supplier "Amazon" --yes
+# Skip confirmation prompt for batch
+fic-expenses pay --supplier "Amazon" --account 75159 --yes
 ```
 
 ## Command Reference
@@ -164,6 +170,7 @@ fic-expenses pay --supplier "Amazon" --yes
 | `fic-expenses show <id>` | Show expense details and installments |
 | `fic-expenses pay <id>` | Mark expense or installment as paid |
 | `fic-expenses create` | Create new expense (wizard or CLI args) |
+| `fic-expenses accounts` | List available payment accounts |
 | `fic-expenses --help` | Show help |
 | `fic-expenses --version` | Show version |
 
@@ -198,6 +205,7 @@ fic-expenses pay --supplier "Amazon" --yes
 ### Pay Options
 | Option | Description |
 |--------|-------------|
+| `--account`, `-a` | Payment account ID (prompts if not specified) |
 | `--installment`, `-i` | Mark only this installment as paid (1-indexed) |
 | `--date`, `-d` | Payment date (default: today) |
 | `--supplier`, `-s` | Batch: mark all from supplier |

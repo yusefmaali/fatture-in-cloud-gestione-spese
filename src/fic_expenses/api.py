@@ -6,7 +6,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 import fattureincloud_python_sdk
-from fattureincloud_python_sdk.api import ReceivedDocumentsApi
+from fattureincloud_python_sdk.api import ReceivedDocumentsApi, InfoApi
 from fattureincloud_python_sdk.models import (
     CreateReceivedDocumentRequest,
     ModifyReceivedDocumentRequest,
@@ -14,6 +14,7 @@ from fattureincloud_python_sdk.models import (
     ReceivedDocumentType,
     Entity,
     ReceivedDocumentPaymentsListItem,
+    PaymentAccount,
 )
 from fattureincloud_python_sdk.exceptions import ApiException
 
@@ -41,9 +42,14 @@ class FICClient:
         self.config.access_token = self.access_token
 
     def _get_api(self) -> ReceivedDocumentsApi:
-        """Get API client instance."""
+        """Get ReceivedDocuments API client instance."""
         api_client = fattureincloud_python_sdk.ApiClient(self.config)
         return ReceivedDocumentsApi(api_client)
+
+    def _get_info_api(self) -> InfoApi:
+        """Get Info API client instance."""
+        api_client = fattureincloud_python_sdk.ApiClient(self.config)
+        return InfoApi(api_client)
 
     # API per_page constraints (enforced by SDK/API)
     MIN_PER_PAGE = 5
@@ -117,6 +123,17 @@ class FICClient:
             document_id=document_id,
         )
         return response.data
+
+    def list_payment_accounts(self) -> list[PaymentAccount]:
+        """
+        List available payment accounts.
+
+        Returns:
+            List of payment accounts (bank accounts, cash, cards, etc.)
+        """
+        api = self._get_info_api()
+        response = api.list_payment_accounts(company_id=self.company_id)
+        return response.data or []
 
     def create_expense(
         self,
@@ -200,14 +217,19 @@ class FICClient:
     def mark_expense_paid(
         self,
         document_id: int,
+        payment_account_id: int,
         paid_date: date | None = None,
         installment_index: int | None = None,
     ) -> ReceivedDocument:
         """
         Mark expense (or specific installment) as paid.
 
+        NOTE: The FIC API requires a payment_account when marking payments as paid.
+        Without it, the API silently ignores the payment update.
+
         Args:
             document_id: ID of the expense
+            payment_account_id: ID of the payment account (bank, cash, card, etc.)
             paid_date: Date of payment (defaults to today)
             installment_index: If provided, only mark this installment as paid (1-indexed)
 
@@ -215,6 +237,7 @@ class FICClient:
             Updated expense document
         """
         paid_date = paid_date or date.today()
+        payment_account = PaymentAccount(id=payment_account_id)
 
         # Get current expense
         expense = self.get_expense(document_id)
@@ -229,11 +252,13 @@ class FICClient:
                 if i + 1 == installment_index:
                     payment.status = "paid"
                     payment.paid_date = paid_date
+                    payment.payment_account = payment_account
             else:
                 # Update all unpaid installments
                 if payment.status != "paid":
                     payment.status = "paid"
                     payment.paid_date = paid_date
+                    payment.payment_account = payment_account
 
         return self.update_expense(document_id, expense)
 
