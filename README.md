@@ -1,15 +1,17 @@
 # FIC Expenses
 
-A CLI tool to manage expenses (received documents) in [Fatture in Cloud](https://www.fattureincloud.it/).
+A Terminal User Interface (TUI) to manage expenses (received documents) in [Fatture in Cloud](https://www.fattureincloud.it/).
+
+![TUI Screenshot](docs/screenshot.png)
 
 ## Features
 
-- **List expenses** - View all expenses with filters (paid/unpaid, supplier, date range)
-- **Show details** - View full expense information including payment installments
-- **Mark as paid** - Pay single expenses, specific installments, or batch by supplier/date
-- **Create expenses** - Interactive wizard or CLI arguments with support for:
-  - Multiple payment installments (pagamento rateale)
-  - Recurring expenses (monthly, biannual, yearly)
+- **Interactive expense list** - Browse expenses with real-time filtering and sorting
+- **Multi-selection** - Select multiple expenses for batch payment operations
+- **Expense details** - View full information including payment schedule
+- **Quick payment** - Pay single expenses, specific installments, or batch operations
+- **Create wizard** - Step-by-step expense creation with installment preview
+- **API quota tracking** - Real-time display of API rate limit usage
 
 ## Installation
 
@@ -27,197 +29,116 @@ pip install -e .
 
 ## Configuration
 
-Run the interactive configuration wizard:
+Launch the TUI and press `F1` to open Settings, or run:
 
 ```bash
-fic-expenses configs
+fic-expenses
+# Then press F1 for Settings
 ```
 
-This will guide you through:
+The Settings screen will guide you through:
 1. Setting your API credentials (get them from https://fattureincloud.it/connessioni/)
-2. Selecting a default payment account
+2. Selecting a default payment account (required for paying expenses)
 
-Alternatively, copy `.env.example` to `.env` and add credentials manually:
-
-```bash
-cp .env.example .env
-```
+Alternatively, create a `.env` file manually:
 
 ```env
 FIC_ACCESS_TOKEN=your_access_token_here
 FIC_COMPANY_ID=your_company_id_here
-FIC_DEFAULT_ACCOUNT_ID=123456  # Required for 'pay' command
+FIC_DEFAULT_ACCOUNT_ID=123456  # Required for payments
 ```
 
 ## Usage
 
-Two ways to run the CLI:
-
 ```bash
 # Option 1: Use the wrapper script (no activation needed)
-./fic-expenses list
+./fic-expenses
 
 # Option 2: Activate venv first
 source venv/bin/activate
-fic-expenses list
+fic-expenses
 ```
 
-### List Expenses
+## Keyboard Shortcuts
 
-```bash
-# List all expenses
-fic-expenses list
+### Global
+| Key | Action |
+|-----|--------|
+| `Ctrl+Q` | Quit application |
+| `Ctrl+R` | Refresh data |
+| `F1` | Open settings |
 
-# Filter by payment status
-fic-expenses list --paid
-fic-expenses list --unpaid
+### Expenses Screen
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Navigate table rows |
+| `Enter` | Open expense details |
+| `Space` | Toggle row selection |
+| `P` | Pay selected (or current if none) |
+| `N` | Create new expense |
+| `Ctrl+A` | Select all unpaid |
+| `Esc` | Clear selection |
+| `/` | Focus search filter |
 
-# Filter by supplier (partial match)
-fic-expenses list --supplier "Amazon"
+### Detail Screen
+| Key | Action |
+|-----|--------|
+| `Esc` / `Backspace` | Go back |
+| `P` | Pay all unpaid installments |
+| `1`-`9` | Pay specific installment |
 
-# Filter by date range
-fic-expenses list --from 2024-01-01 --to 2024-12-31
+### Dialogs
+| Key | Action |
+|-----|--------|
+| `Enter` | Confirm / Submit |
+| `Esc` | Cancel / Close |
+| `Tab` | Next field |
 
-# Combine filters
-fic-expenses list --unpaid --supplier "OVH" --from 2024-01-01
+## Screens
+
+### Expenses List
+The main screen displays all your expenses in a filterable table:
+- Filter by status (All / Paid / Unpaid)
+- Filter by supplier name
+- Filter by date range
+- Summary bar shows totals and counts
+
+### Expense Details
+Press `Enter` on any expense to see:
+- Full supplier and description
+- Date and category
+- Net, VAT, and Gross amounts
+- Complete payment schedule with status
+
+### Create Wizard
+Press `N` to open the 4-step creation wizard:
+1. **Basics** - Supplier, description, category, date
+2. **Amount** - Net amount and VAT rate with calculated totals
+3. **Payment** - Number of installments and first due date
+4. **Review** - Summary before creation
+
+### Pay Dialog
+Press `P` to pay expenses:
+- Single expense payment
+- Batch payment for multiple selected expenses
+- Choose payment date
+- Uses the default payment account from Settings
+
+### Settings
+Press `F1` to configure:
+- API credentials (Access Token and Company ID)
+- Validate credentials against the API
+- Select default payment account
+
+## API Quota Display
+
+The header shows real-time API usage:
 ```
-
-### Show Expense Details
-
-```bash
-fic-expenses show 12345
+API: 42/1000h 156/5000m
 ```
-
-Output includes full details and payment schedule:
-```
-╭────────────────────╮
-│ Expense #12345     │
-╰────────────────────╯
-  Supplier:       Amazon AWS
-  Date:           2024-01-15
-  Description:    Cloud services
-  Category:       Software
-
-  Net:            €100.00
-  VAT:            €22.00
-  Gross:          €122.00
-
-Payment Schedule
-──────────────────────────────────────────────────
-  ✓ Rata 1: €24.40 - due 2024-02-28 (paid 2024-02-25)
-  ✓ Rata 2: €24.40 - due 2024-03-31 (paid 2024-03-30)
-  ○ Rata 3: €24.40 - due 2024-04-30
-  ○ Rata 4: €24.40 - due 2024-05-31
-  ○ Rata 5: €24.40 - due 2024-06-30
-```
-
-### Create Expense
-
-**Interactive wizard** (recommended for first use):
-```bash
-fic-expenses create
-```
-
-**CLI arguments** (for scripting):
-```bash
-# Simple expense
-fic-expenses create \
-  --supplier "Amazon AWS" \
-  --description "Cloud hosting" \
-  --amount-net 100 \
-  --vat-rate 22
-
-# With installments
-fic-expenses create \
-  --supplier "Dell" \
-  --amount-net 500 \
-  --installments 5 \
-  --first-due 2024-03-31
-
-# Recurring expense (creates 3 yearly expenses)
-fic-expenses create \
-  --supplier "Software License" \
-  --amount-net 200 \
-  --recurrence yearly \
-  --occurrences 3 \
-  --yes
-```
-
-### Mark as Paid
-
-The `pay` command uses the default payment account set by `fic-expenses configs`.
-
-```bash
-# Mark expense as paid
-fic-expenses pay 12345
-
-# Mark specific installment (1-indexed)
-fic-expenses pay 12345 --installment 2
-
-# Custom payment date
-fic-expenses pay 12345 --date 2024-02-15
-
-# Batch: mark all from supplier as paid
-fic-expenses pay --supplier "Amazon"
-
-# Batch: mark expenses in date range as paid
-fic-expenses pay --from 2024-01-01 --to 2024-01-31
-
-# Skip confirmation prompt for batch
-fic-expenses pay --supplier "Amazon" --yes
-```
-
-## Command Reference
-
-| Command | Description |
-|---------|-------------|
-| `fic-expenses list` | List expenses with optional filters |
-| `fic-expenses show <id>` | Show expense details and installments |
-| `fic-expenses pay <id>` | Mark expense or installment as paid |
-| `fic-expenses create` | Create new expense (wizard or CLI args) |
-| `fic-expenses configs` | Configure credentials and default settings |
-| `fic-expenses --help` | Show help |
-| `fic-expenses --version` | Show version |
-
-## Options Summary
-
-### List Options
-| Option | Description |
-|--------|-------------|
-| `--paid` | Show only fully paid expenses |
-| `--unpaid` | Show only expenses with unpaid installments |
-| `--supplier`, `-s` | Filter by supplier name (partial match) |
-| `--from` | Filter from date (YYYY-MM-DD) |
-| `--to` | Filter to date (YYYY-MM-DD) |
-| `--all`, `-a` | Fetch all expenses (ignores --limit, uses max per_page=100) |
-| `--limit`, `-l` | Maximum number of expenses to show (ignored with --all) |
-
-### Create Options
-| Option | Description |
-|--------|-------------|
-| `--supplier`, `-s` | Supplier name (required in CLI mode) |
-| `--description`, `-D` | Expense description |
-| `--category`, `-c` | Expense category |
-| `--amount-net`, `-a` | Net amount before VAT (required in CLI mode) |
-| `--vat-rate`, `-v` | VAT percentage (default: 22) |
-| `--date`, `-d` | Expense date (default: today) |
-| `--installments`, `-n` | Number of payment installments (default: 1) |
-| `--first-due` | First installment due date |
-| `--recurrence`, `-r` | Recurrence: `monthly`, `biannual`, `yearly` |
-| `--occurrences`, `-o` | Number of recurring expenses (default: 1) |
-| `--yes`, `-y` | Skip confirmation |
-
-### Pay Options
-| Option | Description |
-|--------|-------------|
-| `--installment`, `-i` | Mark only this installment as paid (1-indexed) |
-| `--date`, `-d` | Payment date (default: expense date) |
-| `--supplier`, `-s` | Batch: mark all from supplier |
-| `--from` | Batch: from date |
-| `--to` | Batch: to date |
-| `--yes`, `-y` | Skip confirmation for batch operations |
-
-Note: The `pay` command uses the default payment account set via `fic-expenses configs`.
+- `h` = hourly limit (resets each hour)
+- `m` = monthly limit
+- Turns red when usage exceeds 90%
 
 ## API Documentation
 

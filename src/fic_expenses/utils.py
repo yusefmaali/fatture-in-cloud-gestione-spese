@@ -23,20 +23,18 @@ def generate_installment_dates(
     """
     Generate due dates for installments.
 
-    First installment is at end of start_date's month,
-    subsequent installments at end of consecutive months.
+    First installment is on start_date, subsequent installments
+    are on the same day of consecutive months.
+
+    Example: start_date=2026-02-15 with 3 installments:
+        -> [2026-02-15, 2026-03-15, 2026-04-15]
+
+    If the day doesn't exist in a month (e.g., Jan 31 -> Feb),
+    relativedelta adjusts to the last valid day (Feb 28/29).
     """
     dates = []
-    year = start_date.year
-    month = start_date.month
-
-    for _ in range(num_installments):
-        dates.append(end_of_month(year, month))
-        month += 1
-        if month > 12:
-            month = 1
-            year += 1
-
+    for i in range(num_installments):
+        dates.append(start_date + relativedelta(months=i))
     return dates
 
 

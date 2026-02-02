@@ -1,24 +1,22 @@
-"""Configuration wizard using Textual TUI."""
+"""Settings screen for configuring FIC credentials."""
 
 import os
 from pathlib import Path
 
 from dotenv import dotenv_values, set_key
 from textual import on, work
-from textual.app import App, ComposeResult
+from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical
+from textual.screen import Screen
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.validation import Function
 from textual.widgets import (
     Button,
     Footer,
-    Header,
     Input,
     Label,
     OptionList,
     Static,
-    TabbedContent,
-    TabPane,
 )
 from textual.widgets.option_list import Option
 
@@ -35,11 +33,9 @@ def mask_token(token: str, visible_chars: int = 4) -> str:
 
 def get_env_path() -> Path:
     """Get the path to the .env file."""
-    # Look in current directory first, then script directory
     cwd_env = Path.cwd() / ".env"
     if cwd_env.exists():
         return cwd_env
-    # Default to current directory for new files
     return cwd_env
 
 
@@ -61,12 +57,7 @@ def get_current_config() -> dict[str, str | None]:
 
 
 def validate_credentials(access_token: str, company_id: str) -> tuple[bool, str]:
-    """
-    Validate credentials by making an API call.
-
-    Returns:
-        Tuple of (is_valid, message)
-    """
+    """Validate credentials by making an API call."""
     if not access_token or not access_token.strip():
         return False, "Access token is required"
 
@@ -78,7 +69,6 @@ def validate_credentials(access_token: str, company_id: str) -> tuple[bool, str]
     except ValueError:
         return False, "Company ID must be a number"
 
-    # Try to make an API call
     try:
         config = fattureincloud_python_sdk.Configuration()
         config.access_token = access_token.strip()
@@ -86,7 +76,6 @@ def validate_credentials(access_token: str, company_id: str) -> tuple[bool, str]
         api_client = fattureincloud_python_sdk.ApiClient(config)
         api = InfoApi(api_client)
 
-        # This will fail with invalid credentials or wrong company
         api.list_payment_accounts(company_id=company_id_int)
         return True, "Credentials valid!"
 
@@ -105,12 +94,7 @@ def validate_credentials(access_token: str, company_id: str) -> tuple[bool, str]
 def fetch_payment_accounts(
     access_token: str, company_id: int
 ) -> list[tuple[int, str]]:
-    """
-    Fetch payment accounts from the API.
-
-    Returns:
-        List of (id, name) tuples
-    """
+    """Fetch payment accounts from the API."""
     config = fattureincloud_python_sdk.Configuration()
     config.access_token = access_token
 
@@ -123,108 +107,93 @@ def fetch_payment_accounts(
     return [(acc.id, acc.name) for acc in accounts]
 
 
-class ConfigWizard(App[bool]):
-    """Textual app for configuring FIC credentials."""
+class SettingsScreen(Screen):
+    """Settings screen for configuring API credentials and payment account."""
 
-    CSS = """
-    Screen {
-        background: $surface;
-    }
+    BINDINGS = [
+        Binding("escape", "go_back", "Back", show=True),
+        Binding("ctrl+s", "save", "Save", show=True),
+    ]
 
-    #main-container {
+    DEFAULT_CSS = """
+    SettingsScreen {
         padding: 1 2;
     }
 
-    #tabs-container {
-        height: auto;
-        max-height: 100%;
+    SettingsScreen #settings-container {
+        height: 1fr;
     }
 
-    .section-title {
+    SettingsScreen .settings-section {
+        margin-bottom: 2;
+        padding: 1;
+        border: solid $surface-lighten-2;
+    }
+
+    SettingsScreen .section-title {
         text-style: bold;
-        margin-bottom: 1;
+        padding-bottom: 1;
     }
 
-    .help-text {
+    SettingsScreen .help-text {
         color: $text-muted;
+        padding-bottom: 1;
+    }
+
+    SettingsScreen Label {
+        padding: 1 0 0 0;
+    }
+
+    SettingsScreen Input {
         margin-bottom: 1;
     }
 
-    .input-label {
-        margin-top: 1;
-        margin-bottom: 0;
+    SettingsScreen #validate-button {
+        margin: 1 0;
     }
 
-    Input {
-        margin-bottom: 1;
+    SettingsScreen #validation-status {
+        padding: 1;
+        margin: 1 0;
     }
 
-    #validate-button {
-        margin-top: 1;
-        width: auto;
-    }
-
-    #validation-status {
-        margin-top: 1;
-        height: 1;
-    }
-
-    .status-success {
+    SettingsScreen .status-success {
         color: $success;
+        background: $success-darken-3;
     }
 
-    .status-error {
+    SettingsScreen .status-error {
         color: $error;
+        background: $error-darken-3;
     }
 
-    .status-pending {
+    SettingsScreen .status-pending {
         color: $warning;
     }
 
-    #account-list {
-        height: auto;
-        max-height: 10;
-        margin-top: 1;
+    SettingsScreen #account-list {
+        height: 10;
+        margin: 1 0;
     }
 
-    #current-account {
-        margin-top: 1;
+    SettingsScreen #current-account {
         color: $text-muted;
+        padding: 1 0;
     }
 
-    #button-bar {
+    SettingsScreen #button-bar {
         dock: bottom;
         height: auto;
-        padding: 1 2;
-        background: $surface;
-        border-top: solid $border;
+        padding: 1 0;
+        border-top: solid $surface-lighten-2;
     }
 
-    #button-bar Button {
+    SettingsScreen #button-bar Button {
         margin-right: 1;
-    }
-
-    #save-button {
-        background: $success;
-    }
-
-    #cancel-button {
-        background: $error;
-    }
-
-    .disabled-tab-note {
-        color: $text-muted;
-        text-style: italic;
-        margin-top: 2;
     }
     """
 
-    BINDINGS = [
-        Binding("ctrl+s", "save", "Save"),
-        Binding("escape", "cancel", "Cancel"),
-    ]
-
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.current_config = get_current_config()
         self.credentials_valid = False
@@ -233,74 +202,67 @@ class ConfigWizard(App[bool]):
         self.payment_accounts: list[tuple[int, str]] = []
         self.selected_account_id: int | None = None
 
-        # If we have existing config, pre-validate
-        if self.current_config["access_token"] and self.current_config["company_id"]:
-            self.selected_account_id = (
-                int(self.current_config["default_account_id"])
-                if self.current_config["default_account_id"]
-                else None
-            )
+        if self.current_config["default_account_id"]:
+            try:
+                self.selected_account_id = int(self.current_config["default_account_id"])
+            except ValueError:
+                pass
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=False)
+        """Create settings screen layout."""
+        with VerticalScroll(id="settings-container"):
+            # API Credentials Section
+            with Container(classes="settings-section"):
+                yield Static("API Credentials", classes="section-title")
+                yield Static(
+                    "Get credentials from: https://fattureincloud.it/connessioni/",
+                    classes="help-text",
+                )
 
-        with Container(id="main-container"):
-            with TabbedContent(id="tabs-container"):
-                with TabPane("Auth", id="auth-tab"):
-                    yield Static(
-                        "Get credentials from: https://fattureincloud.it/connessioni/",
-                        classes="help-text",
-                    )
+                yield Label("Access Token")
+                yield Input(
+                    value=self.current_config["access_token"] or "",
+                    placeholder="Enter your access token",
+                    password=True,
+                    id="token-input",
+                )
 
-                    yield Label("Access Token", classes="input-label")
-                    yield Input(
-                        value=self.current_config["access_token"] or "",
-                        placeholder="Enter your access token",
-                        password=True,
-                        id="token-input",
-                    )
+                yield Label("Company ID")
+                yield Input(
+                    value=self.current_config["company_id"] or "",
+                    placeholder="Enter your company ID",
+                    id="company-input",
+                    validators=[
+                        Function(
+                            lambda v: v.isdigit() if v else True,
+                            "Must be a number",
+                        )
+                    ],
+                )
 
-                    yield Label("Company ID", classes="input-label")
-                    yield Input(
-                        value=self.current_config["company_id"] or "",
-                        placeholder="Enter your company ID",
-                        id="company-input",
-                        validators=[
-                            Function(
-                                lambda v: v.isdigit() if v else True,
-                                "Must be a number",
-                            )
-                        ],
-                    )
+                yield Button("Validate Credentials", id="validate-button", variant="primary")
+                yield Static("", id="validation-status")
 
-                    yield Button("Validate", id="validate-button", variant="primary")
-                    yield Static("", id="validation-status")
+            # Payment Account Section
+            with Container(classes="settings-section", id="account-section"):
+                yield Static("Default Payment Account", classes="section-title")
+                yield Static(
+                    "Select the account to use when marking expenses as paid",
+                    classes="help-text",
+                )
 
-                with TabPane("Account", id="account-tab", disabled=True):
-                    yield Static(
-                        "Select default payment account:",
-                        classes="section-title",
-                    )
-                    yield OptionList(id="account-list")
-                    yield Static("", id="current-account")
-                    yield Static(
-                        "Validate credentials first to see accounts",
-                        classes="disabled-tab-note",
-                        id="account-disabled-note",
-                    )
+                yield OptionList(id="account-list")
+                yield Static("Validate credentials to see available accounts", id="current-account")
 
+        # Bottom buttons
         with Horizontal(id="button-bar"):
             yield Button("Save", id="save-button", variant="success")
-            yield Button("Cancel", id="cancel-button", variant="error")
+            yield Button("Back", id="back-button", variant="default")
 
         yield Footer()
 
     def on_mount(self) -> None:
-        """Focus the first input on mount."""
-        self.title = "FIC Expenses Configuration"
-        self.query_one("#token-input", Input).focus()
-
-        # If we have existing credentials, validate them automatically
+        """Auto-validate existing credentials on mount."""
         if self.current_config["access_token"] and self.current_config["company_id"]:
             self.run_validation()
 
@@ -315,7 +277,7 @@ class ConfigWizard(App[bool]):
         token = self.query_one("#token-input", Input).value
         company = self.query_one("#company-input", Input).value
 
-        self.call_from_thread(self.show_validation_pending)
+        self.app.call_from_thread(self.show_validation_pending)
         valid, message = validate_credentials(token, company)
 
         if valid:
@@ -323,7 +285,6 @@ class ConfigWizard(App[bool]):
             self.validated_company_id = int(company.strip())
             self.credentials_valid = True
 
-            # Fetch payment accounts
             try:
                 self.payment_accounts = fetch_payment_accounts(
                     self.validated_token, self.validated_company_id
@@ -331,10 +292,10 @@ class ConfigWizard(App[bool]):
             except Exception:
                 self.payment_accounts = []
 
-            self.call_from_thread(self.show_validation_success, message)
+            self.app.call_from_thread(self.show_validation_success, message)
         else:
             self.credentials_valid = False
-            self.call_from_thread(self.show_validation_error, message)
+            self.app.call_from_thread(self.show_validation_error, message)
 
     def show_validation_pending(self) -> None:
         """Show validation in progress."""
@@ -343,17 +304,10 @@ class ConfigWizard(App[bool]):
         status.set_classes("status-pending")
 
     def show_validation_success(self, message: str) -> None:
-        """Show validation success and enable account tab."""
+        """Show validation success and populate account list."""
         status = self.query_one("#validation-status", Static)
-        status.update(f"[green]{message}[/green]")
+        status.update(f"✓ {message}")
         status.set_classes("status-success")
-
-        # Enable and populate account tab
-        account_tab = self.query_one("#account-tab", TabPane)
-        account_tab.disabled = False
-
-        # Hide the disabled note
-        self.query_one("#account-disabled-note", Static).display = False
 
         # Populate account list
         account_list = self.query_one("#account-list", OptionList)
@@ -361,33 +315,38 @@ class ConfigWizard(App[bool]):
 
         for acc_id, acc_name in self.payment_accounts:
             is_current = acc_id == self.selected_account_id
-            label = f"{acc_name} {'(current)' if is_current else ''}"
+            label = f"{acc_name} {'✓' if is_current else ''}"
             account_list.add_option(Option(label, id=str(acc_id)))
 
-        # Show current account info
+        # Update current account display
         if self.selected_account_id:
             current_name = next(
                 (name for aid, name in self.payment_accounts if aid == self.selected_account_id),
                 "Unknown",
             )
             self.query_one("#current-account", Static).update(
-                f"Current: [cyan]{current_name}[/cyan] (ID: {self.selected_account_id})"
+                f"Current: {current_name} (ID: {self.selected_account_id})"
             )
-
-        if not self.payment_accounts:
+        elif self.payment_accounts:
             self.query_one("#current-account", Static).update(
-                "[yellow]No payment accounts found. Create one in Fatture in Cloud first.[/yellow]"
+                "Select an account from the list above"
+            )
+        else:
+            self.query_one("#current-account", Static).update(
+                "No payment accounts found. Create one in Fatture in Cloud first."
             )
 
     def show_validation_error(self, message: str) -> None:
         """Show validation error."""
         status = self.query_one("#validation-status", Static)
-        status.update(f"[red]{message}[/red]")
+        status.update(f"✗ {message}")
         status.set_classes("status-error")
 
-        # Disable account tab
-        account_tab = self.query_one("#account-tab", TabPane)
-        account_tab.disabled = True
+        # Clear account list
+        self.query_one("#account-list", OptionList).clear_options()
+        self.query_one("#current-account", Static).update(
+            "Validate credentials to see available accounts"
+        )
 
     @on(OptionList.OptionSelected, "#account-list")
     def handle_account_selected(self, event: OptionList.OptionSelected) -> None:
@@ -399,7 +358,7 @@ class ConfigWizard(App[bool]):
                 "Unknown",
             )
             self.query_one("#current-account", Static).update(
-                f"Selected: [cyan]{account_name}[/cyan] (ID: {self.selected_account_id})"
+                f"Selected: {account_name} (ID: {self.selected_account_id})"
             )
 
     @on(Button.Pressed, "#save-button")
@@ -411,26 +370,19 @@ class ConfigWizard(App[bool]):
 
         env_path = get_env_path()
 
-        # Create .env if it doesn't exist
         if not env_path.exists():
             env_path.touch()
 
-        # Save credentials
         set_key(str(env_path), "FIC_ACCESS_TOKEN", self.validated_token)
         set_key(str(env_path), "FIC_COMPANY_ID", str(self.validated_company_id))
 
-        # Save default account if selected
         if self.selected_account_id:
             set_key(str(env_path), "FIC_DEFAULT_ACCOUNT_ID", str(self.selected_account_id))
 
         self.notify("Configuration saved!", severity="information")
-        self.exit(True)
+        self.action_go_back()
 
-    @on(Button.Pressed, "#cancel-button")
-    def action_cancel(self) -> None:
-        """Cancel without saving."""
-        self.exit(False)
-
-    def key_escape(self) -> None:
-        """Handle escape key."""
-        self.action_cancel()
+    @on(Button.Pressed, "#back-button")
+    def action_go_back(self) -> None:
+        """Go back to previous screen."""
+        self.app.pop_screen()

@@ -1,0 +1,532 @@
+/* FIC Expenses TUI Stylesheet */
+
+/* ============================================
+   Global Styles
+   ============================================ */
+
+Screen {
+    background: $surface;
+}
+
+/* Header styles */
+#app-header {
+    dock: top;
+    height: 1;
+    background: $primary;
+    color: $text;
+    padding: 0 1;
+}
+
+#app-title {
+    width: auto;
+}
+
+/* Footer/keybinding bar */
+#footer-bar {
+    dock: bottom;
+    height: 1;
+    background: $primary-darken-2;
+    color: $text-muted;
+    padding: 0 1;
+}
+
+.footer-key {
+    color: $text;
+    text-style: bold;
+}
+
+/* ============================================
+   QuotaDisplay Widget
+   ============================================ */
+
+QuotaDisplay {
+    dock: right;
+    width: auto;
+    height: 1;
+    padding: 0 1;
+}
+
+QuotaDisplay .quota-warning {
+    color: $error;
+    text-style: bold;
+}
+
+QuotaDisplay .quota-normal {
+    color: $text;
+}
+
+/* ============================================
+   Tab Navigation
+   ============================================ */
+
+TabbedContent {
+    height: 100%;
+}
+
+ContentSwitcher {
+    height: 100%;
+}
+
+TabPane {
+    padding: 1 2;
+}
+
+/* ============================================
+   Loading Screen
+   ============================================ */
+
+LoadingScreen {
+    align: center middle;
+}
+
+LoadingScreen #loading-container {
+    width: auto;
+    height: auto;
+    padding: 2 4;
+    background: $surface;
+}
+
+LoadingScreen #loading-spinner {
+    width: auto;
+    height: auto;
+}
+
+LoadingScreen #loading-message {
+    text-align: center;
+    padding-top: 1;
+    color: $text-muted;
+}
+
+/* ============================================
+   Error Screen
+   ============================================ */
+
+ErrorScreen {
+    align: center middle;
+}
+
+ErrorScreen #error-container {
+    width: 60;
+    height: auto;
+    padding: 2 4;
+    background: $surface;
+    border: solid $error;
+}
+
+ErrorScreen #error-icon {
+    text-align: center;
+    color: $error;
+    text-style: bold;
+    padding-bottom: 1;
+}
+
+ErrorScreen #error-title {
+    text-align: center;
+    text-style: bold;
+    padding-bottom: 1;
+}
+
+ErrorScreen #error-message {
+    text-align: center;
+    color: $text-muted;
+    padding-bottom: 2;
+}
+
+ErrorScreen #error-buttons {
+    align: center middle;
+    height: auto;
+}
+
+ErrorScreen Button {
+    margin: 0 1;
+}
+
+/* ============================================
+   Expenses List Screen
+   ============================================ */
+
+ExpensesScreen {
+    height: 100%;
+}
+
+/* Filter bar */
+FilterBar {
+    height: 3;
+    padding: 0 1;
+    background: $surface-darken-1;
+}
+
+FilterBar Label {
+    padding: 1 1 0 0;
+    width: auto;
+}
+
+FilterBar Select {
+    width: 12;
+}
+
+FilterBar Input {
+    width: 20;
+}
+
+/* Summary bar */
+SummaryBar {
+    dock: bottom;
+    height: 3;
+    padding: 0 1;
+    background: $surface-darken-1;
+    border-top: solid $primary-darken-2;
+}
+
+SummaryBar .summary-item {
+    width: auto;
+    padding: 1;
+}
+
+SummaryBar .summary-label {
+    color: $text-muted;
+}
+
+SummaryBar .summary-value {
+    text-style: bold;
+}
+
+SummaryBar .summary-unpaid {
+    color: $warning;
+}
+
+SummaryBar .summary-paid {
+    color: $success;
+}
+
+/* Expenses table */
+ExpensesTable {
+    height: 1fr;
+}
+
+ExpensesTable > .datatable--header {
+    background: $primary-darken-1;
+    text-style: bold;
+}
+
+ExpensesTable > .datatable--cursor {
+    background: $primary;
+}
+
+/* Status colors in table */
+.status-paid {
+    color: $success;
+}
+
+.status-unpaid {
+    color: $warning;
+}
+
+.status-partial {
+    color: $text-muted;
+}
+
+/* Selection indicator */
+.row-selected {
+    background: $primary-lighten-2;
+}
+
+/* ============================================
+   Detail Screen
+   ============================================ */
+
+DetailsScreen {
+    padding: 1 2;
+}
+
+DetailsScreen #back-button {
+    dock: top;
+    width: auto;
+    height: 1;
+    margin-bottom: 1;
+}
+
+DetailsScreen #expense-header {
+    height: auto;
+    padding: 1;
+    margin-bottom: 1;
+    border: round $primary;
+}
+
+DetailsScreen #supplier-name {
+    text-style: bold;
+}
+
+DetailsScreen #expense-description {
+    color: $text-muted;
+}
+
+DetailsScreen .detail-section {
+    margin-bottom: 1;
+    padding: 1;
+    border: solid $surface-lighten-2;
+}
+
+DetailsScreen .section-title {
+    text-style: bold;
+    padding-bottom: 1;
+}
+
+DetailsScreen .detail-row {
+    height: 1;
+}
+
+DetailsScreen .detail-label {
+    width: 16;
+    color: $text-muted;
+}
+
+DetailsScreen .detail-value {
+    width: 1fr;
+}
+
+/* Payment schedule */
+DetailsScreen #payments-list {
+    height: auto;
+    max-height: 15;
+}
+
+DetailsScreen .payment-row {
+    height: 1;
+    padding: 0 1;
+}
+
+DetailsScreen .payment-paid {
+    color: $success;
+}
+
+DetailsScreen .payment-unpaid {
+    color: $warning;
+}
+
+/* ============================================
+   Dialogs / Modals
+   ============================================ */
+
+ModalScreen {
+    align: center middle;
+}
+
+.dialog-container {
+    width: 60;
+    height: auto;
+    max-height: 80%;
+    padding: 1 2;
+    background: $surface;
+    border: thick $primary;
+}
+
+.dialog-title {
+    text-align: center;
+    text-style: bold;
+    padding-bottom: 1;
+    border-bottom: solid $surface-lighten-2;
+    margin-bottom: 1;
+}
+
+.dialog-content {
+    height: auto;
+    padding: 1 0;
+}
+
+.dialog-buttons {
+    height: auto;
+    align: center middle;
+    padding-top: 1;
+    border-top: solid $surface-lighten-2;
+}
+
+.dialog-buttons Button {
+    margin: 0 1;
+}
+
+/* ============================================
+   Pay Dialog
+   ============================================ */
+
+PayDialog .expense-summary {
+    padding: 1;
+    margin-bottom: 1;
+    background: $surface-darken-1;
+}
+
+PayDialog .total-amount {
+    text-style: bold;
+    color: $success;
+}
+
+PayDialog Label {
+    padding: 0 0 0 0;
+}
+
+PayDialog Input {
+    margin-bottom: 1;
+}
+
+/* ============================================
+   Create Wizard
+   ============================================ */
+
+CreateWizard {
+    width: 70;
+    height: auto;
+    max-height: 85%;
+}
+
+CreateWizard .wizard-tabs {
+    height: 3;
+    border-bottom: solid $primary;
+}
+
+CreateWizard .wizard-tab {
+    width: 1fr;
+    text-align: center;
+    padding: 1;
+}
+
+CreateWizard .wizard-tab-active {
+    background: $primary;
+    text-style: bold;
+}
+
+CreateWizard .wizard-tab-completed {
+    color: $success;
+}
+
+CreateWizard .wizard-content {
+    padding: 1;
+    height: auto;
+    min-height: 15;
+}
+
+CreateWizard .form-group {
+    margin-bottom: 1;
+}
+
+CreateWizard .form-label {
+    padding-bottom: 0;
+}
+
+CreateWizard .form-required {
+    color: $error;
+}
+
+CreateWizard .preview-box {
+    padding: 1;
+    margin-top: 1;
+    background: $surface-darken-1;
+    border: solid $surface-lighten-2;
+}
+
+CreateWizard .wizard-buttons {
+    height: auto;
+    align: center middle;
+    padding: 1;
+    border-top: solid $surface-lighten-2;
+}
+
+/* ============================================
+   Calendar Widget
+   ============================================ */
+
+CalendarWidget {
+    width: 24;
+    height: auto;
+    border: solid $primary;
+    padding: 1;
+}
+
+CalendarWidget .calendar-header {
+    text-align: center;
+    text-style: bold;
+    padding-bottom: 1;
+}
+
+CalendarWidget .calendar-nav {
+    height: 1;
+}
+
+CalendarWidget .calendar-weekdays {
+    color: $text-muted;
+    text-align: center;
+}
+
+CalendarWidget .calendar-day {
+    width: 3;
+    text-align: center;
+}
+
+CalendarWidget .calendar-today {
+    background: $accent;
+}
+
+CalendarWidget .calendar-selected {
+    background: $primary;
+    color: $text;
+    text-style: bold;
+}
+
+CalendarWidget .calendar-other-month {
+    color: $text-disabled;
+}
+
+/* ============================================
+   Settings Screen
+   ============================================ */
+
+SettingsScreen {
+    padding: 1 2;
+}
+
+SettingsScreen .settings-section {
+    margin-bottom: 2;
+    padding: 1;
+    border: solid $surface-lighten-2;
+}
+
+SettingsScreen .section-title {
+    text-style: bold;
+    padding-bottom: 1;
+}
+
+SettingsScreen Label {
+    padding: 1 0 0 0;
+}
+
+SettingsScreen Input {
+    margin-bottom: 1;
+}
+
+SettingsScreen .validation-status {
+    padding: 1;
+    margin: 1 0;
+}
+
+SettingsScreen .status-valid {
+    color: $success;
+    background: $success-darken-3;
+}
+
+SettingsScreen .status-invalid {
+    color: $error;
+    background: $error-darken-3;
+}
+
+SettingsScreen .status-pending {
+    color: $warning;
+}
+
+SettingsScreen OptionList {
+    height: 10;
+    margin: 1 0;
+}
+
+SettingsScreen .current-account {
+    color: $text-muted;
+    padding: 1 0;
+}

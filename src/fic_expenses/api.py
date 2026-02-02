@@ -1,6 +1,7 @@
 """Thin wrapper around Fatture in Cloud SDK."""
 
 import os
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -19,8 +20,62 @@ from fattureincloud_python_sdk.models import (
 from fattureincloud_python_sdk.exceptions import ApiException
 
 
+@dataclass
+class QuotaInfo:
+    """API quota information from response headers."""
+
+    hourly_remaining: int
+    hourly_limit: int
+    monthly_remaining: int
+    monthly_limit: int
+
+    @classmethod
+    def from_headers(cls, headers: dict) -> "QuotaInfo":
+        """Create QuotaInfo from HTTP response headers.
+
+        FIC API uses PascalCase headers like 'RateLimit-HourlyRemaining'.
+        We normalize to lowercase for case-insensitive lookup.
+        """
+        # Normalize headers to lowercase for case-insensitive lookup
+        lower_headers = {k.lower(): v for k, v in headers.items()}
+
+        # Use remaining values, defaulting to limit (not 0) if not found
+        hourly_limit = int(lower_headers.get("ratelimit-hourlylimit", 1000))
+        monthly_limit = int(lower_headers.get("ratelimit-monthlylimit", 40000))
+
+        return cls(
+            hourly_remaining=int(lower_headers.get("ratelimit-hourlyremaining", hourly_limit)),
+            hourly_limit=hourly_limit,
+            monthly_remaining=int(lower_headers.get("ratelimit-monthlyremaining", monthly_limit)),
+            monthly_limit=monthly_limit,
+        )
+
+    @property
+    def hourly_used(self) -> int:
+        """Number of hourly requests used."""
+        return self.hourly_limit - self.hourly_remaining
+
+    @property
+    def monthly_used(self) -> int:
+        """Number of monthly requests used."""
+        return self.monthly_limit - self.monthly_remaining
+
+    @property
+    def hourly_percent(self) -> float:
+        """Percentage of hourly quota used."""
+        return self.hourly_used / self.hourly_limit if self.hourly_limit else 0
+
+    @property
+    def monthly_percent(self) -> float:
+        """Percentage of monthly quota used."""
+        return self.monthly_used / self.monthly_limit if self.monthly_limit else 0
+
+
 class FICClient:
     """Client for Fatture in Cloud API."""
+
+    # Class-level quota tracking (shared across instances)
+    last_quota: QuotaInfo | None = None
 
     def __init__(self):
         """Initialize client from environment variables."""
@@ -51,6 +106,11 @@ class FICClient:
         api_client = fattureincloud_python_sdk.ApiClient(self.config)
         return InfoApi(api_client)
 
+    def _update_quota(self, headers: dict) -> None:
+        """Update quota info from response headers."""
+        if headers:
+            FICClient.last_quota = QuotaInfo.from_headers(headers)
+
     # API per_page constraints (enforced by SDK/API)
     MIN_PER_PAGE = 5
     MAX_PER_PAGE = 100
@@ -60,7 +120,7 @@ class FICClient:
         *,
         q: str | None = None,
         sort: str | None = None,
-        per_page: int = 50,
+        limit: int | None = 50,
         fetch_all: bool = False,
     ) -> list[ReceivedDocument]:
         """
@@ -69,23 +129,25 @@ class FICClient:
         Args:
             q: Filter query (e.g., "entity.name = 'Amazon'")
             sort: Sort field (e.g., "-date" for descending)
-            per_page: Items per page (5-100)
-            fetch_all: If True, fetch all pages using max per_page to minimize API calls
+            limit: Max number of expenses to fetch. None or fetch_all=True fetches all.
+            fetch_all: If True, fetch all pages (equivalent to limit=None)
 
         Returns:
             List of expense documents
         """
         api = self._get_api()
 
-        # When fetching all, use max per_page to reduce API calls
+        # fetch_all=True is equivalent to limit=None
         if fetch_all:
-            per_page = self.MAX_PER_PAGE
+            limit = None
 
-        # Clamp per_page to API constraints
-        per_page = max(self.MIN_PER_PAGE, min(per_page, self.MAX_PER_PAGE))
+        # Use max per_page to minimize API calls
+        per_page = self.MAX_PER_PAGE
 
-        if not fetch_all:
-            response = api.list_received_documents(
+        # Single page fetch optimization: if limit <= MAX_PER_PAGE, just fetch one page
+        if limit is not None and limit <= self.MAX_PER_PAGE:
+            per_page = max(self.MIN_PER_PAGE, limit)
+            response = api.list_received_documents_with_http_info(
                 company_id=self.company_id,
                 type="expense",
                 q=q,
@@ -93,13 +155,14 @@ class FICClient:
                 page=1,
                 per_page=per_page,
             )
-            return response.data or []
+            self._update_quota(response.headers)
+            return response.data.data or []
 
-        # Fetch all pages
+        # Multi-page fetch: either fetch_all or limit > MAX_PER_PAGE
         all_expenses = []
         page = 1
         while True:
-            response = api.list_received_documents(
+            response = api.list_received_documents_with_http_info(
                 company_id=self.company_id,
                 type="expense",
                 q=q,
@@ -107,10 +170,16 @@ class FICClient:
                 page=page,
                 per_page=per_page,
             )
-            expenses = response.data or []
+            self._update_quota(response.headers)
+            expenses = response.data.data or []
             if not expenses:
                 break
             all_expenses.extend(expenses)
+
+            # If we have a limit, stop when we've collected enough
+            if limit is not None and len(all_expenses) >= limit:
+                return all_expenses[:limit]
+
             page += 1
 
         return all_expenses
@@ -118,11 +187,12 @@ class FICClient:
     def get_expense(self, document_id: int) -> ReceivedDocument:
         """Get a single expense by ID."""
         api = self._get_api()
-        response = api.get_received_document(
+        response = api.get_received_document_with_http_info(
             company_id=self.company_id,
             document_id=document_id,
         )
-        return response.data
+        self._update_quota(response.headers)
+        return response.data.data
 
     def list_payment_accounts(self) -> list[PaymentAccount]:
         """
@@ -132,8 +202,9 @@ class FICClient:
             List of payment accounts (bank accounts, cash, cards, etc.)
         """
         api = self._get_info_api()
-        response = api.list_payment_accounts(company_id=self.company_id)
-        return response.data or []
+        response = api.list_payment_accounts_with_http_info(company_id=self.company_id)
+        self._update_quota(response.headers)
+        return response.data.data or []
 
     def create_expense(
         self,
@@ -181,12 +252,12 @@ class FICClient:
         )
 
         request = CreateReceivedDocumentRequest(data=expense)
-        response = api.create_received_document(
+        response = api.create_received_document_with_http_info(
             company_id=self.company_id,
             create_received_document_request=request,
         )
-
-        return response.data
+        self._update_quota(response.headers)
+        return response.data.data
 
     def update_expense(
         self,
@@ -206,13 +277,13 @@ class FICClient:
         api = self._get_api()
 
         request = ModifyReceivedDocumentRequest(data=expense)
-        response = api.modify_received_document(
+        response = api.modify_received_document_with_http_info(
             company_id=self.company_id,
             document_id=document_id,
             modify_received_document_request=request,
         )
-
-        return response.data
+        self._update_quota(response.headers)
+        return response.data.data
 
     def mark_expense_paid(
         self,
