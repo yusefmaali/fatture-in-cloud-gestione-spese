@@ -74,11 +74,19 @@ def list(
         Optional[str],
         typer.Option("--to", help="Filter to date (YYYY-MM-DD)"),
     ] = None,
+    all_results: Annotated[
+        bool,
+        typer.Option("--all", "-a", help="Fetch all expenses (not just first 50)"),
+    ] = False,
+    limit: Annotated[
+        Optional[int],
+        typer.Option("--limit", "-l", help="Maximum number of expenses to show"),
+    ] = None,
 ):
     """
     List expenses.
 
-    By default shows all expenses. Use filters to narrow down.
+    By default shows the 50 most recent expenses. Use --all to fetch all.
     """
     try:
         client = FICClient()
@@ -91,7 +99,18 @@ def list(
         )
         query = filter_obj.to_query()
 
-        expenses = client.list_expenses(q=query, sort="-date")
+        if all_results:
+            console.print("[dim]Fetching all expenses...[/dim]")
+
+        # Determine per_page: use limit if no client-side filtering needed
+        needs_client_filter = paid or unpaid
+        if limit and not all_results and not needs_client_filter:
+            # Can apply limit server-side
+            per_page = limit
+        else:
+            per_page = 50  # default
+
+        expenses = client.list_expenses(q=query, sort="-date", fetch_all=all_results, per_page=per_page)
 
         # Filter by payment status using next_due_date field (available in list API)
         # next_due_date is None when fully paid, has a date when unpaid
@@ -99,6 +118,10 @@ def list(
             expenses = [e for e in expenses if e.next_due_date is None]
         elif unpaid:
             expenses = [e for e in expenses if e.next_due_date is not None]
+
+        # Apply limit (for cases where we couldn't apply it server-side)
+        if limit is not None and limit > 0 and (all_results or needs_client_filter):
+            expenses = expenses[:limit]
 
         display_expenses_table(expenses)
 

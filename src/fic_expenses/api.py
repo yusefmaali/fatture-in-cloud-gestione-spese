@@ -50,8 +50,8 @@ class FICClient:
         *,
         q: str | None = None,
         sort: str | None = None,
-        page: int = 1,
         per_page: int = 50,
+        fetch_all: bool = False,
     ) -> list[ReceivedDocument]:
         """
         List expenses (received documents of type 'expense').
@@ -59,24 +59,44 @@ class FICClient:
         Args:
             q: Filter query (e.g., "entity.name = 'Amazon'")
             sort: Sort field (e.g., "-date" for descending)
-            page: Page number
             per_page: Items per page
+            fetch_all: If True, fetch all pages (not just the first)
 
         Returns:
             List of expense documents
         """
         api = self._get_api()
 
-        response = api.list_received_documents(
-            company_id=self.company_id,
-            type="expense",
-            q=q,
-            sort=sort,
-            page=page,
-            per_page=per_page,
-        )
+        if not fetch_all:
+            response = api.list_received_documents(
+                company_id=self.company_id,
+                type="expense",
+                q=q,
+                sort=sort,
+                page=1,
+                per_page=per_page,
+            )
+            return response.data or []
 
-        return response.data or []
+        # Fetch all pages
+        all_expenses = []
+        page = 1
+        while True:
+            response = api.list_received_documents(
+                company_id=self.company_id,
+                type="expense",
+                q=q,
+                sort=sort,
+                page=page,
+                per_page=per_page,
+            )
+            expenses = response.data or []
+            if not expenses:
+                break
+            all_expenses.extend(expenses)
+            page += 1
+
+        return all_expenses
 
     def get_expense(self, document_id: int) -> ReceivedDocument:
         """Get a single expense by ID."""
