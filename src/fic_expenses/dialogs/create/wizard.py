@@ -182,7 +182,8 @@ class CreateWizard(ModalScreen[bool]):
 
     # Recurrence data
     recurrence_enabled: bool = False
-    recurrence_every_months: int = 3  # Every N months
+    recurrence_every_months: int = 3  # Every N months (0 = custom mode)
+    recurrence_is_custom: bool = False  # True when using custom month input
     recurrence_count: int = 4  # Total number of occurrences
 
     def __init__(self) -> None:
@@ -363,6 +364,9 @@ class CreateWizard(ModalScreen[bool]):
         ]
 
         if self.recurrence_enabled:
+            # Determine select value: "custom" if custom mode, else the month number
+            select_value = "custom" if self.recurrence_is_custom else str(self.recurrence_every_months)
+
             widgets.extend([
                 Label("Repeat Every", classes="form-label"),
                 Select(
@@ -370,13 +374,29 @@ class CreateWizard(ModalScreen[bool]):
                         ("1 month", "1"),
                         ("2 months", "2"),
                         ("3 months (quarterly)", "3"),
+                        ("4 months", "4"),
                         ("6 months (semi-annual)", "6"),
                         ("12 months (annual)", "12"),
+                        ("Custom...", "custom"),
                     ],
-                    value=str(self.recurrence_every_months),
+                    value=select_value,
                     id="recurrence-every-select",
                     allow_blank=False,
                 ),
+            ])
+
+            # Add custom months input when "Custom..." is selected
+            if self.recurrence_is_custom:
+                widgets.extend([
+                    Label("Custom Months", classes="form-label"),
+                    Input(
+                        value=str(self.recurrence_every_months) if self.recurrence_every_months > 0 else "",
+                        id="recurrence-custom-input",
+                        placeholder="e.g., 4 (every 4 months)",
+                    ),
+                ])
+
+            widgets.extend([
                 Label("Total Occurrences", classes="form-label"),
                 Input(
                     value=str(self.recurrence_count),
@@ -418,6 +438,10 @@ class CreateWizard(ModalScreen[bool]):
 
         if not self.recurrence_enabled or effective_count <= 0:
             return []
+
+        # Validate months (need at least 1 month interval)
+        if effective_every <= 0:
+            return [Static("⚠ Enter a valid number of months (1-120)", classes="recurrence-preview-error")]
 
         try:
             expense_date = date.fromisoformat(self.expense_date)
@@ -483,7 +507,19 @@ class CreateWizard(ModalScreen[bool]):
             every_select = self.query_one("#recurrence-every-select", Select)
             count_input = self.query_one("#recurrence-count-input", Input)
 
-            every_months = int(every_select.value)
+            # Handle custom vs preset selection
+            if every_select.value == "custom":
+                # Read from custom input field
+                try:
+                    custom_input = self.query_one("#recurrence-custom-input", Input)
+                    every_months = int(custom_input.value.strip())
+                except (ValueError, TypeError):
+                    every_months = 0  # Invalid - preview will show error
+                except Exception:
+                    every_months = 0  # Custom input not mounted yet
+            else:
+                every_months = int(every_select.value)
+
             try:
                 count = int(count_input.value.strip())
             except (ValueError, TypeError):
@@ -728,7 +764,20 @@ class CreateWizard(ModalScreen[bool]):
                     every_select = self.query_one("#recurrence-every-select", Select)
                     count_input = self.query_one("#recurrence-count-input", Input)
 
-                    self.recurrence_every_months = int(every_select.value)
+                    # Handle custom vs preset selection
+                    self.recurrence_is_custom = every_select.value == "custom"
+                    if self.recurrence_is_custom:
+                        # Read from custom input field
+                        try:
+                            custom_input = self.query_one("#recurrence-custom-input", Input)
+                            self.recurrence_every_months = int(custom_input.value.strip())
+                            if self.recurrence_every_months < 1 or self.recurrence_every_months > 120:
+                                raise ValueError()
+                        except (ValueError, TypeError):
+                            self._show_error("Custom months must be between 1 and 120")
+                            return False
+                    else:
+                        self.recurrence_every_months = int(every_select.value)
 
                     try:
                         self.recurrence_count = int(count_input.value.strip())
@@ -771,7 +820,7 @@ class CreateWizard(ModalScreen[bool]):
             self._update_installment_preview()
 
         # Update recurrence preview in step 4
-        if self.current_step == 4 and event.input.id == "recurrence-count-input":
+        if self.current_step == 4 and event.input.id in ("recurrence-count-input", "recurrence-custom-input"):
             self._update_recurrence_preview()
 
     def on_select_changed(self, event: Select.Changed) -> None:
@@ -799,7 +848,17 @@ class CreateWizard(ModalScreen[bool]):
 
         # Handle recurrence frequency change
         if self.current_step == 4 and event.select.id == "recurrence-every-select":
-            self._update_recurrence_preview()
+            new_is_custom = event.value == "custom"
+            # If switching to/from custom mode, rebuild the step to show/hide custom input
+            if new_is_custom != self.recurrence_is_custom:
+                self.recurrence_is_custom = new_is_custom
+                if not new_is_custom:
+                    # Switching from custom to preset: update the months value
+                    self.recurrence_every_months = int(event.value)
+                self.set_timer(0.05, self._rebuild_recurrence_step)
+            else:
+                # Just a normal preset change, update preview
+                self._update_recurrence_preview()
 
     def _handle_next(self) -> None:
         """Handle next button."""
