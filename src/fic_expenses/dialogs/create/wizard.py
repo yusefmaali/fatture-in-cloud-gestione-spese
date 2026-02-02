@@ -401,9 +401,25 @@ class CreateWizard(ModalScreen[bool]):
 
         return widgets
 
-    def _build_recurrence_preview(self) -> list:
-        """Build recurrence preview showing all expenses that will be created."""
-        if not self.recurrence_enabled or self.recurrence_count <= 0:
+    def _build_recurrence_preview(
+        self,
+        every_months: int | None = None,
+        count: int | None = None,
+    ) -> list:
+        """Build recurrence preview showing all expenses that will be created.
+
+        Args:
+            every_months: Override for recurrence_every_months (uses class value if None)
+            count: Override for recurrence_count (uses class value if None)
+
+        Returns:
+            List of widgets for the preview display.
+        """
+        # Use provided values or fall back to class state
+        effective_every = every_months if every_months is not None else self.recurrence_every_months
+        effective_count = count if count is not None else self.recurrence_count
+
+        if not self.recurrence_enabled or effective_count <= 0:
             return []
 
         try:
@@ -417,8 +433,8 @@ class CreateWizard(ModalScreen[bool]):
 
         # Generate dates for all occurrences
         from dateutil.relativedelta import relativedelta
-        for i in range(min(self.recurrence_count, 12)):  # Show max 12 in preview
-            occurrence_date = expense_date + relativedelta(months=i * self.recurrence_every_months)
+        for i in range(min(effective_count, 12)):  # Show max 12 in preview
+            occurrence_date = expense_date + relativedelta(months=i * effective_every)
             widgets.append(
                 Static(
                     f"  {i + 1}. {occurrence_date.strftime('%b %d, %Y')} - €{gross:,.2f}",
@@ -426,11 +442,11 @@ class CreateWizard(ModalScreen[bool]):
                 )
             )
 
-        if self.recurrence_count > 12:
-            widgets.append(Static(f"  ... and {self.recurrence_count - 12} more"))
+        if effective_count > 12:
+            widgets.append(Static(f"  ... and {effective_count - 12} more"))
 
-        total = gross * self.recurrence_count
-        widgets.append(Static(f"\n  Total: {self.recurrence_count} expenses = €{total:,.2f}"))
+        total = gross * effective_count
+        widgets.append(Static(f"\n  Total: {effective_count} expenses = €{total:,.2f}"))
 
         return widgets
 
@@ -454,9 +470,14 @@ class CreateWizard(ModalScreen[bool]):
             self.app.notify(f"Rebuild error: {e}", severity="error")
 
     def _update_recurrence_preview(self) -> None:
-        """Update the recurrence preview based on current input values."""
+        """Update the recurrence preview based on current input values.
+
+        This method reads values directly from input widgets and passes them
+        as parameters to _build_recurrence_preview(), avoiding class state
+        mutation that could lead to corruption on exceptions.
+        """
         try:
-            # Read current values
+            # Read current values from widgets (don't mutate class state)
             enabled = self.query_one("#recurrence-enabled-select", Select).value == "yes"
 
             if not enabled:
@@ -471,12 +492,6 @@ class CreateWizard(ModalScreen[bool]):
             except (ValueError, TypeError):
                 count = 0
 
-            # Temporarily update values for preview generation
-            old_every = self.recurrence_every_months
-            old_count = self.recurrence_count
-            self.recurrence_every_months = every_months
-            self.recurrence_count = count
-
             # Remove existing preview widgets
             content = self.query_one("#wizard-content", VerticalScroll)
             preview_widgets = []
@@ -490,13 +505,9 @@ class CreateWizard(ModalScreen[bool]):
             for widget in preview_widgets:
                 widget.remove()
 
-            # Build and mount new preview
-            for widget in self._build_recurrence_preview():
+            # Build and mount new preview (pass values as parameters, no state mutation)
+            for widget in self._build_recurrence_preview(every_months=every_months, count=count):
                 content.mount(widget)
-
-            # Restore values
-            self.recurrence_every_months = old_every
-            self.recurrence_count = old_count
 
         except Exception as e:
             self.app.notify(f"Preview update error: {e}", severity="error")
@@ -545,10 +556,13 @@ class CreateWizard(ModalScreen[bool]):
                     content.mount(Static("Preview:", classes="form-label"))
                     for i, (amount, due_date) in enumerate(zip(amounts, dates), 1):
                         content.mount(Static(f"  Rata {i}: €{amount:,.2f} - due {due_date.strftime('%b %d, %Y')}"))
-                except Exception:
+                except ValueError:
+                    # Invalid date format - user is still typing, don't show error
                     pass
-        except Exception:
-            pass
+                except Exception as e:
+                    self.app.notify(f"Installment preview error: {e}", severity="warning")
+        except Exception as e:
+            self.app.notify(f"Preview update error: {e}", severity="error")
 
     def _build_step_5(self) -> list:
         """Build step 5 widgets: Review."""
